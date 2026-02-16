@@ -414,3 +414,5 @@ logs/
 
 # Local test images (keep only if you want them tracked)
 assets/example_image/*.png
+
+sandbox/
