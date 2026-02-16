@@ -396,3 +396,21 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Local models / checkpoints / external tools
+TRELLIS-image-large/
+z123/
+*.ckpt
+*.pth
+*.safetensors
+
+# Generated outputs
+*.ply
+*.mp4
+*.gif
+outputs/
+runs/
+logs/
+
+# Local test images (keep only if you want them tracked)
+assets/example_image/*.png
