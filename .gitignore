@@ -416,3 +416,4 @@ logs/
 assets/example_image/*.png
 
 sandbox/
+.vscode/
