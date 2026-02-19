@@ -52,28 +52,28 @@ def main():
     print(f"Generated {len(outputs['radiance_field'])} radiance field(s)")
     print(f"Generated {len(outputs['mesh'])} mesh(es)")
 
-    # Save Gaussians as PLY
-    try:
-        outputs["gaussian"][0].save_ply(str(output_prefix.with_suffix(".ply")))
-        print(f"Saved Gaussian splat: {output_prefix.with_suffix('.ply')}")
-    except Exception as e:  # noqa: BLE001
-        print(f"Error saving Gaussian PLY: {e}")
+    # # Save Gaussians as PLY
+    # try:
+    #     outputs["gaussian"][0].save_ply(str(output_prefix.with_suffix(".ply")))
+    #     print(f"Saved Gaussian splat: {output_prefix.with_suffix('.ply')}")
+    # except Exception as e:  # noqa: BLE001
+    #     print(f"Error saving Gaussian PLY: {e}")
 
     # Save GLB and OBJ
-    try:
-        glb = postprocessing_utils.to_glb(
-            outputs["gaussian"][0],
-            outputs["mesh"][0],
-            simplify=0.95,
-            texture_size=1024,
-        )
-        glb.export(str(output_prefix.with_suffix(".glb")))
-        print(f"Saved GLB: {output_prefix.with_suffix('.glb')}")
+    # try:
+    #     glb = postprocessing_utils.to_glb(
+    #         outputs["gaussian"][0],
+    #         outputs["mesh"][0],
+    #         simplify=0.95,
+    #         texture_size=1024,
+    #     )
+    #     glb.export(str(output_prefix.with_suffix(".glb")))
+    #     print(f"Saved GLB: {output_prefix.with_suffix('.glb')}")
 
-        glb.export(str(output_prefix.with_suffix(".obj")))
-        print(f"Saved OBJ: {output_prefix.with_suffix('.obj')}")
-    except Exception as e:  # noqa: BLE001
-        print(f"Error saving GLB/OBJ: {e}")
+    #     glb.export(str(output_prefix.with_suffix(".obj")))
+    #     print(f"Saved OBJ: {output_prefix.with_suffix('.obj')}")
+    # except Exception as e:  # noqa: BLE001
+    #     print(f"Error saving GLB/OBJ: {e}")
 
     # Save raw mesh OBJ (untextured)
     try:
