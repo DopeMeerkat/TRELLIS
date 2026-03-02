@@ -417,3 +417,5 @@ assets/example_image/*.png
 
 sandbox/
 .vscode/
+
+ngrok_authtoken.txt
