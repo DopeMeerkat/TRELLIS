@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TRELLIS 3D Generator</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="banner-line"></div>
+    <div class="site-header__top">
+      <div class="brand">
+        <span class="brand-primary">UConn</span>
+        <span class="brand-divider">|</span>
+        <span class="brand-sub">Trellis 3D Generator</span>
+      </div>
+      <nav class="site-nav">
+        <a href="/">Home</a>
+        <a href="https://uconn.edu" target="_blank" rel="noopener">UConn.edu</a>
+      </nav>
+    </div>
+  </header>
+  <main class="page">
+    <section class="card hero">
+      <h1>TRELLIS 3D Generator</h1>
+      <p class="muted">
+        Upload an image, send it to your TRELLIS API, and preview the generated 3D object.
+      </p>
+    </section>
+
+    <section class="card upload-card">
+      <div class="upload-grid">
+        <div class="left">
+          <label for="imageInput" class="upload-dropzone" id="dropzone">
+            <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+            <div>
+              <div class="upload-title">Tap or click to choose an image</div>
+              <div class="upload-subtitle">JPG, PNG, WEBP</div>
+            </div>
+          </label>
+
+          <div class="actions">
+            <button id="generateBtn" class="btn btn-primary" disabled>Generate 3D Model</button>
+            <button id="resetBtn" class="btn btn-secondary" type="button">Reset</button>
+          </div>
+        </div>
+
+        <div class="right">
+          <div class="preview-shell">
+            <img id="imagePreview" class="preview-image hidden" alt="Preview" />
+            <div id="emptyPreview" class="empty-preview">Image preview will appear here</div>
+          </div>
+
+          <div id="fileMeta" class="file-meta hidden"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card progress-card hidden" id="progressCard">
+      <div class="progress-header">
+        <h2>Generating your 3D model</h2>
+        <span id="progressPercent">0%</span>
+      </div>
+
+      <div class="progress-bar">
+        <div id="progressFill" class="progress-fill"></div>
+      </div>
+
+      <p id="progressStage" class="muted">Waiting to start...</p>
+      <p class="small muted">
+        This progress is approximate and usually takes around 1 minute 20 seconds.
+      </p>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

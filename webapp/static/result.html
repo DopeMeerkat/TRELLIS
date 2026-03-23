@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Generation Result</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="banner-line"></div>
+    <div class="site-header__top">
+      <div class="brand">
+        <span class="brand-primary">UConn</span>
+        <span class="brand-divider">|</span>
+        <span class="brand-sub">Trellis 3D Generator</span>
+      </div>
+      <nav class="site-nav">
+        <a href="/">Home</a>
+        <a href="https://uconn.edu" target="_blank" rel="noopener">UConn.edu</a>
+      </nav>
+    </div>
+  </header>
+  <main class="page">
+    <section class="card result-header">
+      <div class="result-header-row">
+        <div>
+          <h1>Generation Result</h1>
+          <p class="muted">View the original image and interact with the generated OBJ.</p>
+        </div>
+        <a href="/" class="btn btn-secondary">Generate Another</a>
+      </div>
+    </section>
+
+    <section id="loadingState" class="card">
+      <h2>Loading result...</h2>
+      <p class="muted">Checking job status.</p>
+    </section>
+
+    <section id="errorState" class="card hidden">
+      <h2>Something went wrong</h2>
+      <p id="errorText" class="error-text"></p>
+      <a href="/" class="btn btn-primary">Back Home</a>
+    </section>
+
+    <section id="resultContent" class="hidden result-grid">
+      <div class="card">
+        <h2>Original Image</h2>
+        <div class="image-panel">
+          <img id="resultImage" alt="Uploaded source image" />
+        </div>
+      </div>
+
+      <div class="card viewer-card">
+        <div class="viewer-header">
+          <h2>3D Viewer</h2>
+          <a id="downloadObj" class="btn btn-primary" download>Download OBJ</a>
+        </div>
+        <div id="viewer"></div>
+        <p class="small muted">
+          Drag to rotate, pinch or scroll to zoom, right-drag to pan.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+  <script src="/static/result.js"></script>
+</body>
+</html>

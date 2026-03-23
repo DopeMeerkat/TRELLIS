@@ -1,0 +1,63 @@
+[project]
+name = "trellis-colab"
+version = "0.0.0"
+requires-python = ">=3.10,<3.11"
+dependencies = [
+  "torch==2.5.1+cu121",
+  "torchvision==0.20.1+cu121",
+  "torchaudio==2.5.1+cu121",
+
+  "kaolin==0.18.0",
+  "spconv-cu120",
+
+  "packaging",
+  "ninja",
+  "cmake",
+  "psutil",
+
+  "pillow",
+  "imageio",
+  "imageio-ffmpeg",
+  "tqdm",
+  "easydict",
+  "opencv-python-headless",
+  "scipy",
+  "rembg",
+  "onnxruntime",
+  "trimesh",
+  "open3d",
+  "xatlas",
+  "pyvista",
+  "pymeshfix",
+  "igraph",
+  "transformers",
+  "huggingface_hub",
+
+  "fastapi",
+  "uvicorn",
+  "python-multipart",
+  "pyngrok",
+
+  "utils3d",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu121" }
+torchvision = { index = "pytorch-cu121" }
+torchaudio = { index = "pytorch-cu121" }
+kaolin = { index = "kaolin-cu121" }
+utils3d = { git = "https://github.com/EasternJournalist/utils3d.git", rev = "9a4eb15e4021b67b12c460c7057d642626897ec8" }
+
+[[tool.uv.index]]
+name = "pytorch-cu121"
+url = "https://download.pytorch.org/whl/cu121"
+explicit = true
+
+[[tool.uv.index]]
+name = "kaolin-cu121"
+url = "https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.5.1_cu121.html"
+format = "flat"
+explicit = true
