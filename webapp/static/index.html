@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TRELLIS 3D Generator</title>
+  <title>Image to Mesh</title>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
@@ -11,69 +11,169 @@
     <div class="banner-line"></div>
     <div class="site-header__top">
       <div class="brand">
-        <span class="brand-primary">UConn</span>
-        <span class="brand-divider">|</span>
-        <span class="brand-sub">Trellis 3D Generator</span>
+        <span class="brand-primary">Image to Mesh</span>
       </div>
-      <nav class="site-nav">
-        <a href="/">Home</a>
-        <a href="https://uconn.edu" target="_blank" rel="noopener">UConn.edu</a>
+      <nav class="site-nav" aria-label="Primary">
+        <a class="tab-link active" data-tab="home" href="#home">Home</a>
+        <a class="tab-link" data-tab="generation" href="#generation">Generation</a>
+        <a class="tab-link" data-tab="gallery" href="#gallery">Gallery</a>
+        <a class="tab-link" data-tab="about" href="#about">About</a>
       </nav>
     </div>
   </header>
+
   <main class="page">
-    <section class="card hero">
-      <h1>TRELLIS 3D Generator</h1>
-      <p class="muted">
-        Upload an image, send it to your TRELLIS API, and preview the generated 3D object.
-      </p>
-    </section>
+    <section id="home" class="tab-panel active" aria-labelledby="home-tab">
+      <div class="card hero">
+        <h1>Image to Mesh</h1>
+        <p class="muted">Generate 3D meshes by uploading an image.</p>
+      </div>
 
-    <section class="card upload-card">
-      <div class="upload-grid">
-        <div class="left">
-          <label for="imageInput" class="upload-dropzone" id="dropzone">
-            <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+      <div class="card instructions">
+        <div class="section-header">
+          <h2>How it works</h2>
+          <p class="muted small">Follow these quick steps to run a job and view the result.</p>
+        </div>
+        <div class="steps-grid">
+          <div class="step">
+            <div class="step-number">1</div>
             <div>
-              <div class="upload-title">Tap or click to choose an image</div>
-              <div class="upload-subtitle">JPG, PNG, WEBP</div>
+              <h3>Pick an image</h3>
+              <p class="muted">Use a clear product or object photo (JPG, PNG, or WEBP). Avoid cluttered backgrounds for best results.</p>
             </div>
-          </label>
-
-          <div class="actions">
-            <button id="generateBtn" class="btn btn-primary" disabled>Generate 3D Model</button>
-            <button id="resetBtn" class="btn btn-secondary" type="button">Reset</button>
           </div>
-        </div>
-
-        <div class="right">
-          <div class="preview-shell">
-            <img id="imagePreview" class="preview-image hidden" alt="Preview" />
-            <div id="emptyPreview" class="empty-preview">Image preview will appear here</div>
+          <div class="step">
+            <div class="step-number">2</div>
+            <div>
+              <h3>Generate</h3>
+              <p class="muted">We upload the image to your TRELLIS API, track progress, and prepare a downloadable OBJ.</p>
+            </div>
           </div>
-
-          <div id="fileMeta" class="file-meta hidden"></div>
+          <div class="step">
+            <div class="step-number">3</div>
+            <div>
+              <h3>Inspect</h3>
+              <p class="muted">Preview the mesh in the browser, rotate, pan, and zoom. Download the OBJ for downstream tools.</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="card progress-card hidden" id="progressCard">
-      <div class="progress-header">
-        <h2>Generating your 3D model</h2>
-        <span id="progressPercent">0%</span>
+    <section id="generation" class="tab-panel" aria-labelledby="generation-tab">
+      <div class="card section-heading">
+        <div class="section-header">
+          <div>
+            <h2>Generate a 3D model</h2>
+            <p class="muted small">Keep this tab open while your job runs. We will redirect you to the viewer when it is ready.</p>
+          </div>
+          <div class="pill">Live</div>
+        </div>
       </div>
 
-      <div class="progress-bar">
-        <div id="progressFill" class="progress-fill"></div>
+      <section class="card upload-card">
+        <div class="upload-grid">
+          <div class="left">
+            <label for="imageInput" class="upload-dropzone" id="dropzone">
+              <input id="imageInput" type="file" accept="image/png,image/jpeg,image/webp" hidden />
+              <div>
+                <div class="upload-title">Tap or click to choose an image</div>
+                <div class="upload-subtitle">JPG, PNG, WEBP</div>
+              </div>
+            </label>
+
+            <div class="actions">
+              <button id="generateBtn" class="btn btn-primary" disabled>Generate 3D Model</button>
+              <button id="resetBtn" class="btn btn-secondary" type="button">Reset</button>
+            </div>
+          </div>
+
+          <div class="right">
+            <div class="preview-shell">
+              <img id="imagePreview" class="preview-image hidden" alt="Preview" />
+              <div id="emptyPreview" class="empty-preview">Image preview will appear here</div>
+            </div>
+
+            <div id="fileMeta" class="file-meta hidden"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card progress-card hidden" id="progressCard">
+        <div class="progress-header">
+          <h3>Generating your 3D model</h3>
+          <span id="progressPercent">0%</span>
+        </div>
+
+        <div class="progress-bar">
+          <div id="progressFill" class="progress-fill"></div>
+        </div>
+
+        <p id="progressStage" class="muted">Waiting to start...</p>
+        <p class="small muted">
+          Progress is approximate and usually takes about 80 seconds.
+        </p>
+      </section>
+    </section>
+
+    <section id="gallery" class="tab-panel" aria-labelledby="gallery-tab">
+      <div class="card section-heading">
+        <div class="section-header">
+          <div>
+            <h2>Gallery</h2>
+            <p class="muted small">Browse before-and-after pairs curated from the data/gallery folder.</p>
+          </div>
+        </div>
       </div>
 
-      <p id="progressStage" class="muted">Waiting to start...</p>
-      <p class="small muted">
-        This progress is approximate and usually takes around 1 minute 20 seconds.
-      </p>
+      <section class="card">
+        <div id="galleryEmpty" class="muted">No gallery items yet. Drop folders into data/gallery to populate this view.</div>
+        <div id="galleryGrid" class="gallery-grid"></div>
+      </section>
+    </section>
+
+    <section id="about" class="tab-panel" aria-labelledby="about-tab">
+      <div class="card section-heading">
+        <div class="section-header">
+          <div>
+            <h2>About this demo</h2>
+            <p class="muted small">Built for rapid local iteration with the TRELLIS API.</p>
+          </div>
+        </div>
+      </div>
+
+      <section class="card">
+        <p class="muted">This UI keeps the blue-on-navy palette but drops platform branding. It is a lightweight FastAPI frontend that:</p>
+        <ul class="muted">
+          <li>Uploads an image to your configured TRELLIS endpoint.</li>
+          <li>Polls job status locally and streams the resulting OBJ.</li>
+          <li>Hosts a small gallery sourced from <strong>data/gallery</strong>.</li>
+        </ul>
+        <p class="muted">Customize the TRELLIS endpoint via the <strong>TRELLIS_API_URL</strong> environment variable before running the server.</p>
+      </section>
     </section>
   </main>
 
+  <div id="viewerModal" class="modal hidden" role="dialog" aria-modal="true" aria-label="Model viewer">
+    <div class="modal__content">
+      <div class="modal__header">
+        <div>
+          <h3 id="modalTitle">Model preview</h3>
+          <p id="modalSubtitle" class="muted small"></p>
+        </div>
+        <button id="modalClose" class="btn btn-secondary">Close</button>
+      </div>
+      <div id="modalViewer" class="modal__viewer"></div>
+      <div class="modal__footer">
+        <a id="modalDownload" class="btn btn-primary" download>Download model</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>
