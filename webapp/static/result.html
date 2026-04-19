@@ -33,9 +33,46 @@
       </div>
     </section>
 
+    <section id="qualityCard" class="card hidden">
+      <div class="quality-rerun-row">
+        <div>
+          <h2>Re-generate with same seed</h2>
+          <p class="muted small">Run this image again with higher quality settings.</p>
+        </div>
+        <div class="quality-rerun-actions">
+          <button id="qualityRerunBtn" class="btn btn-primary" type="button">Regenerate in Higher Quality</button>
+        </div>
+      </div>
+      <p id="qualityStatus" class="small muted"></p>
+    </section>
+
+    <section id="comparisonCard" class="card hidden comparison-card">
+      <div class="section-header comparison-header">
+        <div>
+          <h2>Comparison</h2>
+          <p id="comparisonMeta" class="muted small">Original on the left, regenerated quality on the right.</p>
+        </div>
+        <div class="comparison-actions">
+          <a id="compareDownloadObj" class="btn btn-primary hidden" download>Download Higher Quality OBJ</a>
+        </div>
+      </div>
+
+      <div class="comparison-grid">
+        <article class="comparison-cell">
+          <div class="comparison-label">Original</div>
+          <div id="originalCompareViewport" class="comparison-viewport"></div>
+        </article>
+
+        <article class="comparison-cell">
+          <div class="comparison-label">Higher Quality</div>
+          <div id="regeneratedCompareViewport" class="comparison-viewport"></div>
+        </article>
+      </div>
+    </section>
+
     <section id="loadingState" class="card">
       <h2>Loading result...</h2>
-      <p class="muted">Checking job status.</p>
+      <p id="loadingHint" class="muted">Checking job status.</p>
     </section>
 
     <section id="errorState" class="card hidden">
@@ -52,7 +89,7 @@
         </div>
       </div>
 
-      <div class="card viewer-card">
+      <div id="resultViewerCard" class="card viewer-card">
         <div class="viewer-header">
           <h2>3D Viewer</h2>
           <a id="downloadObj" class="btn btn-primary" download>Download OBJ</a>

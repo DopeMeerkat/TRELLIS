@@ -35,6 +35,21 @@ _pipeline = None
 _load_lock = threading.Lock()
 _gen_lock = threading.Lock()
 
+QUALITY_PRESETS = {
+    "default": {
+        "sparse_structure_sampler_params": {},
+        "slat_sampler_params": {},
+    },
+    "medium": {
+        "sparse_structure_sampler_params": {"steps": 20, "cfg_strength": 7.8},
+        "slat_sampler_params": {"steps": 20, "cfg_strength": 3.5},
+    },
+    "high": {
+        "sparse_structure_sampler_params": {"steps": 50, "cfg_strength": 8.5},
+        "slat_sampler_params": {"steps": 50, "cfg_strength": 4.5},
+    },
+}
+
 
 def get_pipeline():
     global _pipeline
@@ -63,12 +78,26 @@ def export_raw_obj(outputs, out_path: Path):
     )
 
 
-def _generate_obj(job_dir: Path, image_path: Path, seed: int) -> Path:
+def _resolve_quality_preset(quality_preset: str) -> str:
+    preset = str(quality_preset or "default").strip().lower()
+    if preset not in QUALITY_PRESETS:
+        raise HTTPException(status_code=400, detail="quality_preset must be one of: default, medium, high")
+    return preset
+
+
+def _generate_obj(job_dir: Path, image_path: Path, seed: int, quality_preset: str) -> Path:
     pipeline = get_pipeline()
+    preset_name = _resolve_quality_preset(quality_preset)
+    preset_params = QUALITY_PRESETS[preset_name]
 
     with _gen_lock:
         pil_image = Image.open(image_path).convert("RGB")
-        outputs = pipeline.run(pil_image, seed=seed)
+        outputs = pipeline.run(
+            pil_image,
+            seed=seed,
+            sparse_structure_sampler_params=preset_params["sparse_structure_sampler_params"],
+            slat_sampler_params=preset_params["slat_sampler_params"],
+        )
 
         out_obj = job_dir / "model.obj"
         export_raw_obj(outputs, out_obj)
@@ -88,7 +117,7 @@ def health():
     }
 
 
-async def _handle_generate_with_seed(image: UploadFile, seed: int):
+async def _handle_generate_with_seed(image: UploadFile, seed: int, quality_preset: str):
     job_id = str(uuid.uuid4())
     job_dir = APP_OUT / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
@@ -104,7 +133,7 @@ async def _handle_generate_with_seed(image: UploadFile, seed: int):
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Pipeline load failed: {exc}")
 
-    out_obj = _generate_obj(job_dir, in_path, seed)
+    out_obj = _generate_obj(job_dir, in_path, seed, quality_preset=quality_preset)
 
     if not out_obj.exists():
         raise HTTPException(status_code=500, detail="OBJ export failed")
@@ -117,18 +146,30 @@ async def _handle_generate_with_seed(image: UploadFile, seed: int):
 
 
 @app.post("/generate-raw-obj")
-async def generate_raw_obj(image: UploadFile = File(...), seed: int = Form(1)):
-    return await _handle_generate_with_seed(image, seed=seed)
+async def generate_raw_obj(
+    image: UploadFile = File(...),
+    seed: int = Form(1),
+    quality_preset: str = Form("default"),
+):
+    return await _handle_generate_with_seed(image, seed=seed, quality_preset=quality_preset)
 
 
 @app.post("/generate-obj")
-async def generate_obj(image: UploadFile = File(...), seed: int = Form(1)):
-    return await _handle_generate_with_seed(image, seed=seed)
+async def generate_obj(
+    image: UploadFile = File(...),
+    seed: int = Form(1),
+    quality_preset: str = Form("default"),
+):
+    return await _handle_generate_with_seed(image, seed=seed, quality_preset=quality_preset)
 
 
 @app.post("/generate-variant-obj")
-async def generate_variant_obj(image: UploadFile = File(...), seed: int = Form(1)):
-    return await _handle_generate_with_seed(image, seed=seed)
+async def generate_variant_obj(
+    image: UploadFile = File(...),
+    seed: int = Form(1),
+    quality_preset: str = Form("default"),
+):
+    return await _handle_generate_with_seed(image, seed=seed, quality_preset=quality_preset)
 
 
 @app.get("/")

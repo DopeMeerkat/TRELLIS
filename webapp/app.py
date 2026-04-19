@@ -39,6 +39,7 @@ DEFAULT_VARIANT_COUNT = 4
 MAX_VARIANT_COUNT = 4
 MAX_SEED = 2**31 - 1
 MAX_STORED_ITEMS = 20
+QUALITY_PRESETS = {"default", "medium", "high"}
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
 MODEL_EXTS = {".obj", ".glb", ".gltf"}
@@ -126,13 +127,28 @@ def _derive_seeds(base_seed: int, count: int) -> List[int]:
     return [int((base_seed + index) % MAX_SEED) for index in range(count)]
 
 
-def _post_trellis_image(input_path: Path, seed: int, api_url: str) -> requests.Response:
+def _normalize_quality_preset(raw_preset: Optional[str]) -> str:
+    preset = str(raw_preset or "default").strip().lower()
+    if preset not in QUALITY_PRESETS:
+        raise HTTPException(status_code=400, detail="quality_preset must be one of: default, medium, high")
+    return preset
+
+
+def _post_trellis_image(
+    input_path: Path,
+    seed: int,
+    api_url: str,
+    quality_preset: str = "default",
+) -> requests.Response:
     with input_path.open("rb") as f:
         files = {"image": (input_path.name, f, "application/octet-stream")}
         return requests.post(
             api_url,
             files=files,
-            data={"seed": str(seed)},
+            data={
+                "seed": str(seed),
+                "quality_preset": quality_preset,
+            },
             timeout=600,
             allow_redirects=True,
         )
@@ -270,20 +286,22 @@ def _spawn_variant_generation(job_id: str, input_path: Path, output_dir: Path, s
     return thread
 
 
-def run_generation(job_id: str, input_path: Path, output_path: Path):
+def run_generation(
+    job_id: str,
+    input_path: Path,
+    output_path: Path,
+    seed: int = 1,
+    quality_preset: str = "default",
+):
     set_job(job_id, status="running", started_at=time.time(), error=None)
 
     try:
-        with input_path.open("rb") as f:
-            files = {
-                "image": (input_path.name, f, "application/octet-stream")
-            }
-            response = requests.post(
-                TRELLIS_API_URL,
-                files=files,
-                timeout=600,
-                allow_redirects=True,
-            )
+        response = _post_trellis_image(
+            input_path=input_path,
+            seed=seed,
+            api_url=TRELLIS_API_URL,
+            quality_preset=quality_preset,
+        )
 
         if response.status_code != 200:
             raise RuntimeError(
@@ -298,6 +316,8 @@ def run_generation(job_id: str, input_path: Path, output_path: Path):
             status="done",
             completed_at=time.time(),
             output_url=f"/media/outputs/{output_path.name}",
+            seed=seed,
+            quality_preset=quality_preset,
         )
 
     except Exception as e:
@@ -344,14 +364,17 @@ async def upload_image(image: UploadFile = File(...)):
         status="queued",
         created_at=time.time(),
         input_url=f"/media/uploads/{safe_name}",
+        input_path=str(input_path),
         output_url=None,
         error=None,
         filename=image.filename,
+        seed=1,
+        quality_preset="default",
     )
 
     thread = threading.Thread(
         target=run_generation,
-        args=(job_id, input_path, output_path),
+        args=(job_id, input_path, output_path, 1, "default"),
         daemon=True
     )
     thread.start()
@@ -359,6 +382,8 @@ async def upload_image(image: UploadFile = File(...)):
     return JSONResponse({
         "job_id": job_id,
         "status": "queued",
+        "seed": 1,
+        "quality_preset": "default",
         "result_page": f"/result?job={job_id}",
     })
 
@@ -556,6 +581,114 @@ def job_result(job_id: str, seed: Optional[int] = None):
         "input_url": job.get("input_url"),
         "output_url": job.get("output_url"),
         "filename": job.get("filename"),
+        "seed": int(job.get("seed", 1)),
+        "quality_preset": job.get("quality_preset", "default"),
+        "source_job_id": job.get("source_job_id"),
+        "source_seed": job.get("source_seed"),
+    })
+
+
+def _resolve_job_input_path(job: Dict[str, Any]) -> Path:
+    input_path_value = job.get("input_path")
+    if input_path_value:
+        input_path = Path(str(input_path_value))
+        if input_path.exists():
+            return input_path
+
+    input_url = str(job.get("input_url", ""))
+    filename = Path(input_url).name
+    fallback = UPLOAD_DIR / filename
+    if fallback.exists():
+        return fallback
+
+    raise HTTPException(status_code=404, detail="Source image for rerun was not found")
+
+
+def _resolve_seed_for_rerun(job: Dict[str, Any], seed: Optional[int]) -> int:
+    if seed is not None:
+        return int(seed)
+
+    if job.get("mode") == "variants":
+        active_seed = job.get("active_seed")
+        if active_seed is not None:
+            return int(active_seed)
+        variants = job.get("variants", [])
+        first_done = next((variant for variant in variants if variant.get("status") == "done"), None)
+        if first_done and first_done.get("seed") is not None:
+            return int(first_done.get("seed"))
+
+    return int(job.get("seed", 1))
+
+
+@app.post("/api/rerun-quality")
+async def rerun_quality(
+    image: Optional[UploadFile] = File(None),
+    source_job_id: Optional[str] = Form(None),
+    seed: Optional[int] = Form(None),
+):
+    source_job = get_job(source_job_id) if source_job_id else None
+    if seed is None:
+        seed = 1
+
+    resolved_seed = int(seed)
+
+    source_input_path = None
+    source_filename = "source-image.png"
+    if source_job:
+        try:
+            source_input_path = _resolve_job_input_path(source_job)
+            source_filename = source_job.get("filename") or source_input_path.name
+        except HTTPException:
+            source_input_path = None
+
+    if source_input_path is None:
+        if image is None or not image.filename:
+            raise HTTPException(status_code=400, detail="No source image provided.")
+        source_filename = Path(image.filename).name or source_filename
+        content = await image.read()
+        if not content:
+            raise HTTPException(status_code=400, detail="Empty source image upload.")
+    else:
+        content = source_input_path.read_bytes()
+
+    job_id = str(uuid.uuid4())
+    ext = Path(source_filename).suffix.lower() or ".png"
+    safe_name = f"{job_id}{ext}"
+    input_path = UPLOAD_DIR / safe_name
+    input_path.write_bytes(content)
+
+    output_path = OUTPUT_DIR / f"{job_id}.obj"
+    set_job(
+        job_id,
+        mode="single",
+        status="queued",
+        created_at=time.time(),
+        input_url=f"/media/uploads/{safe_name}",
+        input_path=str(input_path),
+        output_url=None,
+        error=None,
+        filename=source_job.get("filename") if source_job else source_filename,
+        seed=resolved_seed,
+        quality_preset="high",
+        source_job_id=source_job_id,
+        source_seed=resolved_seed,
+    )
+
+    thread = threading.Thread(
+        target=run_generation,
+        args=(job_id, input_path, output_path, resolved_seed, "high"),
+        daemon=True,
+    )
+    thread.start()
+
+    return JSONResponse({
+        "job_id": job_id,
+        "status": "queued",
+        "source_job_id": source_job_id,
+        "source_seed": resolved_seed,
+        "seed": resolved_seed,
+        "quality_preset": "high",
+        "result_page": f"/result?job={job_id}",
     })
 
 

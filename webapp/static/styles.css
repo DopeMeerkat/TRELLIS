@@ -226,6 +226,10 @@ a {
   gap: 20px;
 }
 
+.result-grid.result-grid--compare {
+  grid-template-columns: 1fr;
+}
+
 .upload-dropzone {
   min-height: 220px;
   border: 2px dashed #b8c7dd;
@@ -505,6 +509,79 @@ a {
   margin: 8px 0 0;
 }
 
+.quality-rerun-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.quality-rerun-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.quality-select {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 12px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+}
+
+.quality-select:focus {
+  outline: 2px solid rgba(43, 102, 195, 0.2);
+  border-color: var(--accent);
+}
+
+.comparison-card {
+  grid-column: 1 / -1;
+}
+
+.comparison-header {
+  align-items: flex-start;
+}
+
+.comparison-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.comparison-cell {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f8fbff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+}
+
+.comparison-label {
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--uconn-navy);
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, #ffffff 0%, #f5f8fd 100%);
+}
+
+.comparison-viewport {
+  width: 100%;
+  height: 420px;
+  background: #f3f6fb;
+}
+
 .gallery-card {
   position: relative;
   border: 1px solid var(--border);
@@ -673,6 +750,7 @@ a {
   .viewer-header,
   .result-header-row,
   .section-header,
+  .quality-rerun-row,
   .modal__header {
     align-items: flex-start;
     flex-direction: column;
@@ -680,6 +758,24 @@ a {
 
   .compare-grid {
     grid-template-columns: 1fr;
+  }
+
+  .comparison-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .comparison-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .comparison-actions {
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+
+  .comparison-viewport {
+    height: 320px;
   }
 
 }
