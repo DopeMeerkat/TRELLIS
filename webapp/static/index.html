@@ -26,34 +26,41 @@
     <section id="home" class="tab-panel active" aria-labelledby="home-tab">
       <div class="card hero">
         <h1>Image to Mesh</h1>
-        <p class="muted">Generate 3D meshes by uploading an image.</p>
+        <p class="muted">Fast, lightweight image-to-mesh generation built for rapid iteration.</p>
       </div>
 
       <div class="card instructions">
         <div class="section-header">
           <h2>How it works</h2>
-          <p class="muted small">Follow these quick steps to run a job and view the result.</p>
+          <p class="muted small">Generate a batch quickly, choose the strongest mesh, then refine it in higher quality.</p>
         </div>
         <div class="steps-grid">
           <div class="step">
             <div class="step-number">1</div>
             <div>
               <h3>Pick an image</h3>
-              <p class="muted">Use a clear product or object photo (JPG, PNG, or WEBP). Avoid cluttered backgrounds for best results.</p>
+              <p class="muted">Use a clear product or object photo (JPG, PNG, or WEBP). A clean subject helps produce stronger geometry.</p>
             </div>
           </div>
           <div class="step">
             <div class="step-number">2</div>
             <div>
-              <h3>Generate</h3>
-              <p class="muted">We upload the image to your TRELLIS API, track progress, and prepare a downloadable OBJ.</p>
+              <h3>Generate a fast batch</h3>
+              <p class="muted">Open Variant Exploration and generate up to 4 candidates. Each mesh is lightweight and usually takes around 20 seconds.</p>
             </div>
           </div>
           <div class="step">
             <div class="step-number">3</div>
             <div>
-              <h3>Inspect</h3>
-              <p class="muted">Preview the mesh in the browser, rotate, pan, and zoom. Download the OBJ for downstream tools.</p>
+              <h3>Choose the best candidate</h3>
+              <p class="muted">Inspect variants in the viewer or multiview mode, then click Use this on the best mesh to open the shared result page.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-number">4</div>
+            <div>
+              <h3>Refine in higher quality</h3>
+              <p class="muted">From the result page, run Regenerate in Higher Quality to keep the same seed and source image while improving detail.</p>
             </div>
           </div>
         </div>
@@ -65,7 +72,7 @@
         <div class="section-header">
           <div>
             <h2>Generate a 3D model</h2>
-            <p class="muted small">Keep this tab open while your job runs. We will redirect you to the viewer when it is ready.</p>
+            <p class="muted small">Recommended flow: start with Variant Exploration, pick the best mesh, then refine it from the result page.</p>
           </div>
         </div>
       </div>
@@ -139,7 +146,7 @@
 
         <p id="progressStage" class="muted">Waiting to start...</p>
         <p class="small muted">
-          Progress is approximate and usually takes about 80 seconds.
+          Progress is approximate. Fast draft meshes are typically around 20 seconds each.
         </p>
       </section>
 
@@ -184,13 +191,7 @@
       </div>
 
       <section class="card">
-        <p class="muted">This UI keeps the blue-on-navy palette but drops platform branding. It is a lightweight FastAPI frontend that:</p>
-        <ul class="muted">
-          <li>Uploads an image to your configured TRELLIS endpoint.</li>
-          <li>Polls job status locally and streams the resulting OBJ.</li>
-          <li>Hosts a small gallery sourced from <strong>data/gallery</strong>.</li>
-        </ul>
-        <p class="muted">Customize the TRELLIS endpoint via the <strong>TRELLIS_API_URL</strong> environment variable before running the server.</p>
+        <p class="muted">Developed by Kevin Chen, Reed Burdick, and Ben Zhefan Guo.</p>
       </section>
     </section>
   </main>
