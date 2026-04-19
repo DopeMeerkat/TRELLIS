@@ -12,6 +12,11 @@ const downloadObj = document.getElementById("downloadObj");
 
 let scene, camera, renderer, controls, currentObject;
 
+function orientObjectForViewer(object) {
+  // Convert TRELLIS raw OBJ orientation to the viewer convention.
+  object.rotation.set(-Math.PI / 2, 0, 0);
+}
+
 function showError(message) {
   loadingState.classList.add("hidden");
   resultContent.classList.add("hidden");
@@ -97,6 +102,7 @@ async function loadOBJ(objUrl) {
     loader.load(
       objUrl,
       (obj) => {
+        orientObjectForViewer(obj);
         obj.traverse((child) => {
           if (child.isMesh) {
             child.material = new THREE.MeshStandardMaterial({

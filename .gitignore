@@ -409,6 +409,8 @@ z123/
 *.mp4
 *.gif
 outputs/
+outputs_api/
+data/
 runs/
 logs/
 

@@ -189,6 +189,13 @@ let viewerControls = null;
 let viewerObject = null;
 let viewerAnimationFrame = null;
 
+function orientObjectForViewer(object, modelUrl) {
+  // Convert TRELLIS raw OBJ orientation to the viewer convention.
+  if (String(modelUrl || '').toLowerCase().endsWith('.obj')) {
+    object.rotation.set(-Math.PI / 2, 0,0);
+  }
+}
+
 function clearViewer() {
   if (viewerAnimationFrame) cancelAnimationFrame(viewerAnimationFrame);
   if (viewerRenderer) {
@@ -293,6 +300,7 @@ async function loadModel(url) {
       loader.load(
         url,
         (obj) => {
+          orientObjectForViewer(obj, url);
           obj.traverse((child) => {
             if (child.isMesh) {
               child.material = new THREE.MeshStandardMaterial({

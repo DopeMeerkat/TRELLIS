@@ -21,10 +21,11 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 GALLERY_DIR.mkdir(parents=True, exist_ok=True)
 
-# Change this to your current TRELLIS endpoint if needed
+# Change this to your current TRELLIS endpoint if needed.
+# Default to a local backend so the public UI can stay separate from generation.
 TRELLIS_API_URL = os.environ.get(
     "TRELLIS_API_URL",
-    "https://jeannetta-unreplete-dowdily.ngrok-free.dev/generate-obj"
+    "http://127.0.0.1:8000/generate-obj"
 )
 
 # Approximate average generation time in seconds
@@ -259,4 +260,4 @@ def gallery_items():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("app:app", host="127.0.0.1", port=5010, reload=True)
