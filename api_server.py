@@ -4,7 +4,7 @@ import uuid
 from pathlib import Path
 
 import trimesh
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from PIL import Image
 
@@ -63,6 +63,19 @@ def export_raw_obj(outputs, out_path: Path):
     )
 
 
+def _generate_obj(job_dir: Path, image_path: Path, seed: int) -> Path:
+    pipeline = get_pipeline()
+
+    with _gen_lock:
+        pil_image = Image.open(image_path).convert("RGB")
+        outputs = pipeline.run(pil_image, seed=seed)
+
+        out_obj = job_dir / "model.obj"
+        export_raw_obj(outputs, out_obj)
+
+    return out_obj
+
+
 @app.get("/health")
 def health():
     return {
@@ -75,7 +88,7 @@ def health():
     }
 
 
-async def _handle_generate(image: UploadFile):
+async def _handle_generate_with_seed(image: UploadFile, seed: int):
     job_id = str(uuid.uuid4())
     job_dir = APP_OUT / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
@@ -87,16 +100,11 @@ async def _handle_generate(image: UploadFile):
     in_path.write_bytes(data)
 
     try:
-        pipeline = get_pipeline()
+        get_pipeline()
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Pipeline load failed: {exc}")
 
-    with _gen_lock:
-        pil_image = Image.open(in_path).convert("RGB")
-        outputs = pipeline.run(pil_image, seed=1)
-
-        out_obj = job_dir / "model.obj"
-        export_raw_obj(outputs, out_obj)
+    out_obj = _generate_obj(job_dir, in_path, seed)
 
     if not out_obj.exists():
         raise HTTPException(status_code=500, detail="OBJ export failed")
@@ -109,13 +117,18 @@ async def _handle_generate(image: UploadFile):
 
 
 @app.post("/generate-raw-obj")
-async def generate_raw_obj(image: UploadFile = File(...)):
-    return await _handle_generate(image)
+async def generate_raw_obj(image: UploadFile = File(...), seed: int = Form(1)):
+    return await _handle_generate_with_seed(image, seed=seed)
 
 
 @app.post("/generate-obj")
-async def generate_obj(image: UploadFile = File(...)):
-    return await _handle_generate(image)
+async def generate_obj(image: UploadFile = File(...), seed: int = Form(1)):
+    return await _handle_generate_with_seed(image, seed=seed)
+
+
+@app.post("/generate-variant-obj")
+async def generate_variant_obj(image: UploadFile = File(...), seed: int = Form(1)):
+    return await _handle_generate_with_seed(image, seed=seed)
 
 
 @app.get("/")

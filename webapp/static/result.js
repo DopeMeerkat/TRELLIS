@@ -3,12 +3,21 @@ function getJobId() {
   return params.get("job");
 }
 
+function getSeed() {
+  const params = new URLSearchParams(window.location.search);
+  const value = params.get("seed");
+  if (value === null || value === "") return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 const loadingState = document.getElementById("loadingState");
 const errorState = document.getElementById("errorState");
 const errorText = document.getElementById("errorText");
 const resultContent = document.getElementById("resultContent");
 const resultImage = document.getElementById("resultImage");
 const downloadObj = document.getElementById("downloadObj");
+const resultMeta = document.getElementById("resultMeta");
 
 let scene, camera, renderer, controls, currentObject;
 
@@ -128,6 +137,7 @@ function animate() {
 
 async function initPage() {
   const jobId = getJobId();
+  const seed = getSeed();
   if (!jobId) {
     showError("Missing job id.");
     return;
@@ -150,7 +160,8 @@ async function initPage() {
       return;
     }
 
-    const resultRes = await fetch(`/api/result/${jobId}`);
+    const resultUrl = seed === null ? `/api/result/${jobId}` : `/api/result/${jobId}?seed=${seed}`;
+    const resultRes = await fetch(resultUrl);
     const resultData = await resultRes.json();
 
     if (!resultRes.ok) {
@@ -162,6 +173,19 @@ async function initPage() {
 
     resultImage.src = resultData.input_url;
     downloadObj.href = resultData.output_url;
+
+    if (resultMeta) {
+      const pieces = [];
+      if (resultData.mode === "variants") {
+        pieces.push(`Seed ${resultData.seed}`);
+        if (typeof resultData.runtime_seconds === "number") {
+          pieces.push(`Runtime ${resultData.runtime_seconds.toFixed(2)}s`);
+        }
+      } else {
+        pieces.push("Single generation");
+      }
+      resultMeta.textContent = pieces.join(" • ");
+    }
 
     initViewer();
 

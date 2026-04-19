@@ -410,7 +410,7 @@ z123/
 *.gif
 outputs/
 outputs_api/
-data/
+webapp/data/
 runs/
 logs/
 

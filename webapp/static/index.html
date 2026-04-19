@@ -67,9 +67,15 @@
             <h2>Generate a 3D model</h2>
             <p class="muted small">Keep this tab open while your job runs. We will redirect you to the viewer when it is ready.</p>
           </div>
-          <div class="pill">Live</div>
         </div>
       </div>
+
+      <section class="card">
+        <div class="mode-tabs" role="tablist" aria-label="Generation Mode">
+          <button id="singleModeTab" class="mode-tab active" type="button" data-mode="single">Single Image</button>
+          <button id="variantModeTab" class="mode-tab" type="button" data-mode="variants">Variant Exploration</button>
+        </div>
+      </section>
 
       <section class="card upload-card">
         <div class="upload-grid">
@@ -82,10 +88,32 @@
               </div>
             </label>
 
-            <div class="actions">
-              <button id="generateBtn" class="btn btn-primary" disabled>Generate 3D Model</button>
-              <button id="resetBtn" class="btn btn-secondary" type="button">Reset</button>
+            <div id="singleModePanel" class="mode-panel active">
+              <div class="actions">
+                <button id="generateBtn" class="btn btn-primary" disabled>Generate 3D Model</button>
+                <button id="resetBtn" class="btn btn-secondary" type="button">Reset</button>
+              </div>
             </div>
+
+            <div id="variantModePanel" class="mode-panel hidden">
+              <div class="variant-options">
+                <label class="field">
+                  <span>Number of variants</span>
+                  <input id="variantCount" type="number" min="1" max="4" value="4" />
+                </label>
+
+                <label class="field">
+                  <span>Base seed (optional)</span>
+                  <input id="variantSeed" type="number" placeholder="Random" />
+                </label>
+              </div>
+
+              <div class="actions">
+                <button id="generateVariantsBtn" class="btn btn-secondary" disabled>Generate Variants</button>
+                <button id="resetBtnVariant" class="btn btn-secondary" type="button">Reset</button>
+              </div>
+            </div>
+
           </div>
 
           <div class="right">
@@ -113,6 +141,19 @@
         <p class="small muted">
           Progress is approximate and usually takes about 80 seconds.
         </p>
+      </section>
+
+      <section class="card hidden" id="variantResultsCard">
+        <div class="section-header">
+          <div>
+            <h2>Variant gallery</h2>
+            <p id="variantSummary" class="muted small">Generated variants will appear here.</p>
+          </div>
+          <button id="multiviewBtn" class="btn btn-secondary" type="button" disabled>Multiview</button>
+        </div>
+
+        <div id="variantGalleryEmpty" class="muted">No variants yet.</div>
+        <div id="variantGallery" class="variant-grid hidden"></div>
       </section>
     </section>
 

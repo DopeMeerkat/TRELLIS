@@ -1,12 +1,13 @@
 import os
+import secrets
 import time
 import uuid
 import threading
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 
 import requests
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -27,9 +28,17 @@ TRELLIS_API_URL = os.environ.get(
     "TRELLIS_API_URL",
     "http://127.0.0.1:8000/generate-obj"
 )
+TRELLIS_VARIANT_API_URL = os.environ.get(
+    "TRELLIS_VARIANT_API_URL",
+    "http://127.0.0.1:8000/generate-variant-obj"
+)
 
 # Approximate average generation time in seconds
 ESTIMATED_SECONDS = 80
+DEFAULT_VARIANT_COUNT = 4
+MAX_VARIANT_COUNT = 4
+MAX_SEED = 2**31 - 1
+MAX_STORED_ITEMS = 20
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
 MODEL_EXTS = {".obj", ".glb", ".gltf"}
@@ -56,6 +65,209 @@ def set_job(job_id: str, **updates):
 def get_job(job_id: str):
     with jobs_lock:
         return jobs.get(job_id)
+
+
+def _normalize_seed_value(raw_seed: Optional[str]) -> Optional[int]:
+    if raw_seed is None:
+        return None
+
+    raw_seed = raw_seed.strip()
+    if not raw_seed:
+        return None
+
+    try:
+        return int(raw_seed)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Seed must be blank or an integer.") from exc
+
+
+def _normalize_variant_count(raw_count: int) -> int:
+    if raw_count < 1:
+        raise HTTPException(status_code=400, detail="Variant count must be at least 1.")
+    return min(raw_count, MAX_VARIANT_COUNT)
+
+
+def _trim_path_items(path: Path, max_items: int = MAX_STORED_ITEMS):
+    if not path.exists() or not path.is_dir():
+        return
+
+    entries = sorted(path.iterdir(), key=lambda p: p.stat().st_mtime)
+    if len(entries) <= max_items:
+        return
+
+    remove_count = len(entries) - max_items
+    for entry in entries[:remove_count]:
+        try:
+            if entry.is_dir():
+                for sub in sorted(entry.rglob("*"), key=lambda p: len(p.parts), reverse=True):
+                    if sub.is_file() or sub.is_symlink():
+                        sub.unlink(missing_ok=True)
+                    elif sub.is_dir():
+                        sub.rmdir()
+                entry.rmdir()
+            else:
+                entry.unlink(missing_ok=True)
+        except Exception:
+            # Cleanup is best-effort; skip items that fail to delete.
+            continue
+
+
+def _cleanup_storage():
+    _trim_path_items(UPLOAD_DIR)
+    _trim_path_items(OUTPUT_DIR)
+    _trim_path_items(BASE_DIR.parent / "outputs_api")
+
+
+def _random_seed() -> int:
+    return secrets.randbelow(MAX_SEED)
+
+
+def _derive_seeds(base_seed: int, count: int) -> List[int]:
+    return [int((base_seed + index) % MAX_SEED) for index in range(count)]
+
+
+def _post_trellis_image(input_path: Path, seed: int, api_url: str) -> requests.Response:
+    with input_path.open("rb") as f:
+        files = {"image": (input_path.name, f, "application/octet-stream")}
+        return requests.post(
+            api_url,
+            files=files,
+            data={"seed": str(seed)},
+            timeout=600,
+            allow_redirects=True,
+        )
+
+
+def _variant_output_url(job_id: str, filename: str) -> str:
+    return f"/media/outputs/{job_id}/{filename}"
+
+
+def _find_variant(job: Dict[str, Any], seed: int):
+    for variant in job.get("variants", []):
+        if variant.get("seed") == seed:
+            return variant
+    return None
+
+
+def _update_variant_job_state(job_id: str, variants: List[Dict[str, Any]], **updates):
+    done_count = sum(1 for variant in variants if variant.get("status") == "done")
+    total_count = len(variants)
+    progress = min(95, 10 + int((done_count / max(total_count, 1)) * 85)) if total_count else 5
+
+    stage = updates.pop("stage", None)
+    if stage is None:
+        if updates.get("status") == "done":
+            stage = "Completed"
+        elif updates.get("status") == "error":
+            stage = "Completed with errors"
+        else:
+            stage = "Generating variants"
+
+    set_job(
+        job_id,
+        variants=variants,
+        completed_count=done_count,
+        progress=updates.pop("progress", progress),
+        stage=stage,
+        **updates,
+    )
+
+
+def run_variant_generation(job_id: str, input_path: Path, output_dir: Path, seeds: List[int]):
+    output_dir.mkdir(parents=True, exist_ok=True)
+    start_time = time.time()
+
+    existing = get_job(job_id) or {}
+    current_variants = list(existing.get("variants", []))
+    total_requested = int(existing.get("requested_count", 0)) + len(seeds)
+    base_seed = existing.get("base_seed")
+
+    _update_variant_job_state(
+        job_id,
+        current_variants,
+        status="running",
+        started_at=existing.get("started_at", start_time),
+        completed_at=None,
+        error=None,
+        progress=10,
+        stage=f"Generating 0 of {len(seeds)} variants",
+        mode="variants",
+        requested_count=total_requested,
+        base_seed=base_seed,
+    )
+
+    for index, seed in enumerate(seeds, start=len(current_variants) + 1):
+        variant_name = f"variant_{index:02d}_seed_{seed}.obj"
+        output_path = output_dir / variant_name
+        started_at = time.time()
+        error_message = None
+
+        try:
+            response = _post_trellis_image(input_path, seed, TRELLIS_VARIANT_API_URL)
+            if response.status_code != 200:
+                raise RuntimeError(
+                    f"API returned {response.status_code}: {response.text[:300]}"
+                )
+
+            output_path.write_bytes(response.content)
+            status = "done"
+        except Exception as exc:
+            status = "error"
+            error_message = str(exc)
+
+        finished_at = time.time()
+        current_variants.append({
+            "variant_id": f"{job_id}-{index}",
+            "index": index,
+            "seed": seed,
+            "status": status,
+            "started_at": started_at,
+            "completed_at": finished_at,
+            "runtime_seconds": round(finished_at - started_at, 2),
+            "output_url": _variant_output_url(job_id, variant_name) if status == "done" else None,
+            "filename": variant_name,
+            "error": error_message,
+        })
+
+        _update_variant_job_state(
+            job_id,
+            current_variants,
+            status="running",
+            started_at=existing.get("started_at", start_time),
+            completed_at=None,
+            error=error_message,
+            progress=min(95, 10 + int((len(current_variants) / max(total_requested, 1)) * 85)),
+            stage="Generating variants",
+            mode="variants",
+            requested_count=total_requested,
+            base_seed=base_seed,
+        )
+
+    final_status = "done" if all(variant.get("status") == "done" for variant in current_variants) else "error"
+    final_error = None if final_status == "done" else "One or more variants failed."
+
+    _update_variant_job_state(
+        job_id,
+        current_variants,
+        status=final_status,
+        completed_at=time.time(),
+        error=final_error,
+        progress=100,
+        stage="Completed" if final_status == "done" else "Completed with errors",
+        mode="variants",
+        requested_count=total_requested,
+        base_seed=base_seed,
+    )
+
+
+def _spawn_variant_generation(job_id: str, input_path: Path, output_dir: Path, seeds: List[int]):
+    thread = threading.Thread(
+        target=run_variant_generation,
+        args=(job_id, input_path, output_dir, seeds),
+        daemon=True,
+    )
+    thread.start()
+    return thread
 
 
 def run_generation(job_id: str, input_path: Path, output_path: Path):
@@ -109,6 +321,8 @@ def result_page():
 
 @app.post("/api/upload")
 async def upload_image(image: UploadFile = File(...)):
+    _cleanup_storage()
+
     if not image.filename:
         raise HTTPException(status_code=400, detail="No file uploaded.")
 
@@ -126,6 +340,7 @@ async def upload_image(image: UploadFile = File(...)):
 
     set_job(
         job_id,
+        mode="single",
         status="queued",
         created_at=time.time(),
         input_url=f"/media/uploads/{safe_name}",
@@ -148,6 +363,66 @@ async def upload_image(image: UploadFile = File(...)):
     })
 
 
+@app.post("/api/generate-variants")
+async def generate_variants(
+    image: UploadFile = File(...),
+    variant_count: int = Form(DEFAULT_VARIANT_COUNT),
+    base_seed: str = Form(""),
+):
+    _cleanup_storage()
+
+    if not image.filename:
+        raise HTTPException(status_code=400, detail="No file uploaded.")
+
+    ext = Path(image.filename).suffix.lower()
+    if ext not in IMAGE_EXTS:
+        raise HTTPException(status_code=400, detail="Supported formats: jpg, jpeg, png, webp")
+
+    count = _normalize_variant_count(variant_count)
+    parsed_seed = _normalize_seed_value(base_seed)
+    base_seed_value = parsed_seed if parsed_seed is not None else _random_seed()
+    seeds = _derive_seeds(base_seed_value, count)
+
+    job_id = str(uuid.uuid4())
+    safe_name = f"{job_id}{ext}"
+    input_path = UPLOAD_DIR / safe_name
+    output_dir = OUTPUT_DIR / job_id
+
+    content = await image.read()
+    input_path.write_bytes(content)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    set_job(
+        job_id,
+        mode="variants",
+        status="queued",
+        created_at=time.time(),
+        input_url=f"/media/uploads/{safe_name}",
+        input_path=str(input_path),
+        output_dir=str(output_dir),
+        output_url=None,
+        error=None,
+        filename=image.filename,
+        requested_count=count,
+        base_seed=base_seed_value,
+        active_seed=base_seed_value,
+        completed_count=0,
+        variants=[],
+        seeds=seeds,
+    )
+
+    _spawn_variant_generation(job_id, input_path, output_dir, seeds)
+
+    return JSONResponse({
+        "job_id": job_id,
+        "status": "queued",
+        "mode": "variants",
+        "requested_count": count,
+        "base_seed": base_seed_value,
+        "result_page": f"/result?job={job_id}",
+    })
+
+
 @app.get("/api/status/{job_id}")
 def job_status(job_id: str):
     job = get_job(job_id)
@@ -156,6 +431,43 @@ def job_status(job_id: str):
 
     status = job.get("status", "queued")
     now = time.time()
+
+    if job.get("mode") == "variants":
+        variants = job.get("variants", [])
+        completed = sum(1 for variant in variants if variant.get("status") == "done")
+        requested_count = job.get("requested_count", len(variants))
+        progress = int(job.get("progress", 0))
+        if status == "queued":
+            progress = 5
+            stage = "Queued"
+        elif status == "running":
+            progress = max(progress, 10)
+            stage = job.get("stage", "Generating variants")
+        elif status == "done":
+            progress = 100
+            stage = "Completed"
+        elif status == "error":
+            progress = 100
+            stage = job.get("stage", "Completed with errors")
+        else:
+            stage = job.get("stage", "Queued")
+
+        return JSONResponse({
+            "job_id": job_id,
+            "mode": "variants",
+            "status": status,
+            "progress": progress,
+            "stage": stage,
+            "input_url": job.get("input_url"),
+            "output_url": job.get("output_url"),
+            "error": job.get("error"),
+            "filename": job.get("filename"),
+            "base_seed": job.get("base_seed"),
+            "active_seed": job.get("active_seed"),
+            "requested_count": requested_count,
+            "completed_count": completed,
+            "variants": variants,
+        })
 
     progress = 0
     stage = "Queued"
@@ -196,16 +508,51 @@ def job_status(job_id: str):
 
 
 @app.get("/api/result/{job_id}")
-def job_result(job_id: str):
+def job_result(job_id: str, seed: Optional[int] = None):
     job = get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
+
+    if job.get("mode") == "variants":
+        variants = job.get("variants", [])
+        selected = None
+
+        if seed is not None:
+            selected = _find_variant(job, seed)
+        if selected is None:
+            active_seed = job.get("active_seed")
+            if active_seed is not None:
+                selected = _find_variant(job, int(active_seed))
+        if selected is None:
+            selected = next((variant for variant in variants if variant.get("status") == "done"), None)
+
+        if not selected:
+            raise HTTPException(status_code=400, detail="No completed variant is available yet")
+
+        if selected.get("status") != "done":
+            raise HTTPException(status_code=400, detail="Variant is not finished yet")
+
+        return JSONResponse({
+            "job_id": job_id,
+            "mode": "variants",
+            "input_url": job.get("input_url"),
+            "output_url": selected.get("output_url"),
+            "filename": selected.get("filename"),
+            "seed": selected.get("seed"),
+            "runtime_seconds": selected.get("runtime_seconds"),
+            "base_seed": job.get("base_seed"),
+            "active_seed": job.get("active_seed"),
+            "requested_count": job.get("requested_count"),
+            "variants": variants,
+            "variant": selected,
+        })
 
     if job.get("status") != "done":
         raise HTTPException(status_code=400, detail="Job is not finished yet")
 
     return JSONResponse({
         "job_id": job_id,
+        "mode": "single",
         "input_url": job.get("input_url"),
         "output_url": job.get("output_url"),
         "filename": job.get("filename"),
